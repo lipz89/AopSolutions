@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -9,7 +10,29 @@ namespace AopDecorator
 {
     public static class Proxy
     {
+        private const string ASSEMBLY_NAME = "ProxyAssembly";
+        private const string MODULE_NAME = "ProxyModule";
+        private const string TYPE_NAME = "Proxy_";
+
+        private static readonly AssemblyBuilder assembly;
+        private static readonly ModuleBuilder module;
         private static readonly Hashtable typeCache = Hashtable.Synchronized(new Hashtable());
+
+        static Proxy()
+        {
+            AssemblyName assemblyName = new AssemblyName { Name = ASSEMBLY_NAME };
+            assemblyName.SetPublicKey(Assembly.GetExecutingAssembly().GetName().GetPublicKey());
+
+            assembly = AppDomain.CurrentDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndSave);
+            module = assembly.DefineDynamicModule(MODULE_NAME, ASSEMBLY_NAME + ".dll");
+        }
+
+        //[Conditional("XDEBUG")]
+        public static void Save()
+        {
+            assembly.Save(ASSEMBLY_NAME + ".dll");
+        }
+
         public static object Of(Type baseType, params object[] parameters)
         {
             Type proxyType = CreateType(baseType);
@@ -40,12 +63,9 @@ namespace AopDecorator
             {
                 baseType = innerType;
             }
-            else
+            else if (!baseType.IsAssignableFrom(innerType))
             {
-                if (!baseType.IsAssignableFrom(innerType))
-                {
-                    throw new Exception(string.Format("类型{0}不能从类型{1}分配实例。", baseType, innerType));
-                }
+                throw new Exception(string.Format("类型{0}不能从类型{1}分配实例。", baseType, innerType));
             }
             lock (typeCache.SyncRoot)
             {
@@ -70,31 +90,23 @@ namespace AopDecorator
 
         private static Type Override(Type innerType, Type baseType)
         {
-            string nameOfAssembly = innerType.Name + "ProxyAssembly";
-            string nameOfModule = innerType.Name + "ProxyModule";
-            string nameOfType = innerType.Name + "Proxy";
-            var dllName = nameOfAssembly + ".dll";
-
-            var assemblyName = new AssemblyName(nameOfAssembly);
-            var assembly = AppDomain.CurrentDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndSave);
-            var moduleBuilder = assembly.DefineDynamicModule(nameOfModule, dllName);
+            string nameOfType = TYPE_NAME + innerType.Name;
 
             TypeBuilder typeBuilder;
             if (baseType.IsInterface)
             {
-                typeBuilder = moduleBuilder.DefineType(nameOfType, TypeAttributes.Public);
+                typeBuilder = module.DefineType(nameOfType, TypeAttributes.Public);
                 typeBuilder.AddInterfaceImplementation(baseType);
             }
             else
             {
-                typeBuilder = moduleBuilder.DefineType(nameOfType, TypeAttributes.Public, baseType);
+                typeBuilder = module.DefineType(nameOfType, TypeAttributes.Public, baseType);
             }
 
             InjectInterceptor(innerType, baseType, typeBuilder);
 
             var t = typeBuilder.CreateType();
 
-            //assembly.Save(dllName);
 
             return t;
         }
@@ -110,12 +122,12 @@ namespace AopDecorator
                 var ctorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, parameterTypes);
 
                 ILGenerator il = ctorBuilder.GetILGenerator();
-                for (int i = 0; i <= parameterTypes.Length; i++)
-                {
-                    LoadArgument(il, i);
-                }
+                //for (int i = 0; i <= parameterTypes.Length; i++)
+                //{
+                //    LoadArgument(il, i);
+                //}
 
-                il.Emit(OpCodes.Call, ctor);
+                //il.Emit(OpCodes.Call, ctor);
 
                 for (int i = 0; i <= parameterTypes.Length; i++)
                 {
@@ -147,7 +159,7 @@ namespace AopDecorator
                 var methodParameterTypes = method.GetParameters();
                 Type[] parameterTypes = methodParameterTypes.Select(u => u.ParameterType).ToArray();
 
-                var methodBuilder = typeBuilder.DefineMethod(method.Name, MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Final, CallingConventions.Standard, method.ReturnType, parameterTypes);
+                var methodBuilder = typeBuilder.DefineMethod(method.Name, MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.HideBySig | MethodAttributes.NewSlot, method.ReturnType, parameterTypes);
                 if (method.ContainsGenericParameters)
                 {
                     var gps = method.GetGenericArguments().Select(x => x.Name).ToArray();
@@ -188,13 +200,21 @@ namespace AopDecorator
                 ilOfMethod.Emit(OpCodes.Newarr, typeof(Type));
                 ilOfMethod.Emit(OpCodes.Stloc, pts);
 
-                for (var i = 0; i < parameterTypes.Length; i++)
+                for (var i = 0; i < methodParameterTypes.Length; i++)
                 {
                     ilOfMethod.Emit(OpCodes.Ldloc, parameters);
                     ilOfMethod.Emit(OpCodes.Ldc_I4, i);
                     if (parameterTypes[i].IsByRef)
                     {
-                        LoadDefaultValue(ilOfMethod, parameterTypes[i].GetElementType());
+                        if (methodParameterTypes[i].IsOut)
+                        {
+                            LoadDefaultValue(ilOfMethod, parameterTypes[i].GetElementType());
+                        }
+                        else
+                        {
+                            ilOfMethod.Emit(OpCodes.Ldarg, i + 1);
+                            ilOfMethod.Emit(OpCodes.Ldind_I4);
+                        }
                         if (parameterTypes[i].GetElementType().IsValueType)
                         {
                             ilOfMethod.Emit(OpCodes.Box, parameterTypes[i].GetElementType());
@@ -225,9 +245,25 @@ namespace AopDecorator
                 ilOfMethod.Emit(OpCodes.Ldloc, pts);
                 //}
 
+                LocalBuilder lcReturn = null;
+                if (method.ReturnType != typeof(void))
+                {
+                    lcReturn = ilOfMethod.DeclareLocal(method.ReturnType);
+                }
+
                 // call Invoke() method of Interceptor
                 ilOfMethod.Emit(OpCodes.Call, typeof(Interceptor).GetMethod("Invoke"));
 
+                // pop the stack if return void
+                if (method.ReturnType != typeof(void))
+                {
+                    ilOfMethod.Emit(OpCodes.Unbox_Any, method.ReturnType);
+                    ilOfMethod.Emit(OpCodes.Stloc, lcReturn);
+                }
+                else
+                {
+                    ilOfMethod.Emit(OpCodes.Pop);
+                }
 
                 for (var i = 0; i < parameterTypes.Length; i++)
                 {
@@ -245,14 +281,9 @@ namespace AopDecorator
                     }
                 }
 
-                // pop the stack if return void
-                if (method.ReturnType == typeof(void))
+                if (method.ReturnType != typeof(void))
                 {
-                    ilOfMethod.Emit(OpCodes.Pop);
-                }
-                else
-                {
-                    ilOfMethod.Emit(OpCodes.Castclass, method.ReturnType);
+                    ilOfMethod.Emit(OpCodes.Ldloc, lcReturn);
                 }
                 // complete
                 ilOfMethod.Emit(OpCodes.Ret);

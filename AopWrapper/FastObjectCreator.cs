@@ -45,6 +45,10 @@ namespace AopWrapper
                 new Type[] { typeof(object[]) }, typeof(CreateOjectHandler).Module);
 
             ConstructorInfo constructor = type.GetConstructor(paramsTypes);
+            if (constructor == null)
+            {
+                throw new Exception("没找到与指定参数匹配的构造函数。");
+            }
 
             ILGenerator il = method.GetILGenerator();
 

@@ -38,7 +38,6 @@ namespace AopDecorator
 
             var ctx = new MethodContext
             {
-                ClassName = @object.GetType().Name,
                 Executor = @object,
                 MethodName = @method,
                 Parameters = pars.ToArray(),
@@ -126,7 +125,7 @@ namespace AopDecorator
                         }
                         return DefaultValue(mthd.ReturnType);
                     case FlowBehavior.ThrowException:
-                        throw new Exception("Ö´ÐÐ´íÎó¡£", ex);
+                        throw ctx.ThrowException ?? new Exception(ctx.ThrowMessage, ex);
                     default:
                         throw;
                 }
@@ -181,13 +180,13 @@ namespace AopDecorator
             return lbd.Compile().DynamicInvoke();
         }
 
-        private static List<BaseHandler> GetHandlers(MethodInfo method, Type innerType, out bool hasExcpetions)
+        private static List<AopHandler> GetHandlers(MethodInfo method, Type innerType, out bool hasExcpetions)
         {
             var types = method.GetParameters().Select(x => x.ParameterType).ToArray();
             var mi = innerType.GetMethod(method.Name, types);
 
-            var baseHandlers = innerType.GetCustomAttributes<BaseHandler>().ToList();
-            var hanlders = mi?.GetCustomAttributes<BaseHandler>().ToList() ?? new List<BaseHandler>();
+            var baseHandlers = innerType.GetCustomAttributes<AopHandler>().ToList();
+            var hanlders = mi?.GetCustomAttributes<AopHandler>().ToList() ?? new List<AopHandler>();
 
             foreach (var baseHandler in baseHandlers)
             {
@@ -201,7 +200,7 @@ namespace AopDecorator
 
             foreach (var attr in hanlders)
             {
-                if (attr.GetType().GetMethod("OnException").DeclaringType != typeof(BaseHandler))
+                if (attr.GetType().GetMethod("OnException").DeclaringType != typeof(AopHandler))
                 {
                     hasExcpetions = true;
                 }

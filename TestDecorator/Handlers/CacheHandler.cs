@@ -2,9 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace AopDecorator.Handlers
+using AopDecorator;
+using AopDecorator.Handlers;
+
+namespace TestDecorator.Handlers
 {
-    public abstract class BaseCacheHandler : BaseHandler
+    public abstract class BaseCacheHandler : AopHandler
     {
         public string CacheKey { get; protected set; }
         public IEnumerable<string> ParameterNames { get; private set; }
@@ -54,6 +57,7 @@ namespace AopDecorator.Handlers
 
         public override void BeginInvoke(MethodContext context)
         {
+            Console.WriteLine(context.FullName + " " + this.GetType().Name + " BeginInvoke");
             object rtn = null;
             if (ParameterNames.IsNullOrEmpty())
             {
@@ -77,6 +81,7 @@ namespace AopDecorator.Handlers
 
         public override void EndInvoke(MethodContext context)
         {
+            Console.WriteLine(context.FullName + " " + this.GetType().Name + " EndInvoke");
             var rtn = context.ReturnValue;
             if (ParameterNames.IsNullOrEmpty())
             {

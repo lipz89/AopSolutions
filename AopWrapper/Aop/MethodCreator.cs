@@ -32,23 +32,30 @@ namespace AopWrapper.Aop
         protected static readonly MethodInfo MethodLog = typeof(HandlerCache).GetMethod("WriteLine", new Type[] { typeof(string) });
 
         #endregion
-        protected MethodCreator(MethodInfo methodInfo, List<string> handlers, bool emitTryCatch)
+        protected MethodCreator(Type targetType, MethodInfo methodInfo, FieldInfo fieldCore, List<string> handlers, bool emitTryCatch)
         {
+            this.TargetType = targetType;
             this.emitTryCatch = emitTryCatch;
+            FieldCore = fieldCore;
             MethodInfo = methodInfo;
             Handlers = handlers;
             handlerCount = handlers?.Count ?? 0;
         }
-        protected MethodCreator(MethodInfo methodInfo, List<int> handlers, bool emitTryCatch)
+        protected MethodCreator(Type targetType, MethodInfo methodInfo, FieldInfo fieldCore, List<int> handlers, bool emitTryCatch)
         {
+            this.TargetType = targetType;
             this.emitTryCatch = emitTryCatch;
+            FieldCore = fieldCore;
             MethodInfo = methodInfo;
             HandlerKeys = handlers;
             handlerCount = handlers?.Count ?? 0;
         }
+
+        public Type TargetType { get; }
         public MethodInfo MethodInfo { get; }
         public List<string> Handlers { get; }
         public List<int> HandlerKeys { get; }
+        public FieldInfo FieldCore { get; }
 
         private int handlerCount;
 
@@ -96,7 +103,7 @@ namespace AopWrapper.Aop
             il.EmitCall(OpCodes.Call, METHOD_CONTEXT_TYPE.GetMethod("set_MethodName", INTERNAL_ATTRIBUTES), new[] { typeof(string) });
             // context.ClassName = m.DeclaringType.Name;
             il.Emit(OpCodes.Ldloc, localContext);
-            il.Emit(OpCodes.Ldstr, MethodInfo.ReflectedType.Name);
+            il.Emit(OpCodes.Ldstr, TargetType.Name);
             il.EmitCall(OpCodes.Call, METHOD_CONTEXT_TYPE.GetMethod("set_ClassName", INTERNAL_ATTRIBUTES), new[] { typeof(string) });
             // context.Executor = this;
             il.Emit(OpCodes.Ldloc, localContext);
@@ -359,30 +366,30 @@ namespace AopWrapper.Aop
             }
         }
 
-        internal static void Create(TypeBuilder typeBuilder, MethodInfo methodInfo, List<string> handlers, bool emitTryCatch)
+        internal static void Create(TypeBuilder typeBuilder, Type targetType, MethodInfo methodInfo, FieldInfo fieldCore, List<string> handlers, bool emitTryCatch)
         {
             if (TaskHelper.IsGenericTask(methodInfo.ReturnType) || TaskHelper.IsTask(methodInfo.ReturnType))
             {
-                var creator = new MethodTaskCreator(methodInfo, handlers, emitTryCatch);
+                var creator = new MethodTaskCreator(targetType, methodInfo, fieldCore, handlers, emitTryCatch);
                 creator.Create(typeBuilder);
             }
             else
             {
-                var creator = new MethodNormalCreator(methodInfo, handlers, emitTryCatch);
+                var creator = new MethodNormalCreator(targetType, methodInfo, fieldCore, handlers, emitTryCatch);
                 creator.Create(typeBuilder);
             }
         }
 
-        internal static void Create(TypeBuilder typeBuilder, MethodInfo methodInfo, List<int> handlers, bool emitTryCatch)
+        internal static void Create(TypeBuilder typeBuilder, Type targetType, MethodInfo methodInfo, FieldInfo fieldCore, List<int> handlers, bool emitTryCatch)
         {
             if (TaskHelper.IsGenericTask(methodInfo.ReturnType) || TaskHelper.IsTask(methodInfo.ReturnType))
             {
-                var creator = new MethodTaskCreator(methodInfo, handlers, emitTryCatch);
+                var creator = new MethodTaskCreator(targetType, methodInfo, fieldCore, handlers, emitTryCatch);
                 creator.Create(typeBuilder);
             }
             else
             {
-                var creator = new MethodNormalCreator(methodInfo, handlers, emitTryCatch);
+                var creator = new MethodNormalCreator(targetType, methodInfo, fieldCore, handlers, emitTryCatch);
                 creator.Create(typeBuilder);
             }
         }

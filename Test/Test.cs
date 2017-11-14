@@ -5,13 +5,11 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-using AopDecorator;
-
 namespace Test
 {
     [LogHandler]
     [ExceptionHandler]
-    public class Test : ITest
+    public class Test :  ITest
     {
         public void TestBool()
         {
@@ -106,22 +104,6 @@ namespace Test
         }
     }
 
-
-
-    public interface ITest
-    {
-        void Write();
-        void Write(string str);
-        //void Write(out int str);
-        void Write(ref string str);
-        //void Write(out object str);
-        void Write(params object[] args);
-
-        string Read();
-
-        int Read(int a, int b);
-        Task<List<TModel>> GetAll<TModel>(Expression<Func<TModel, dynamic>> sortField = null, SortOrder? sortOrder = null);
-    }
 
     public class Test2 : Test
     {

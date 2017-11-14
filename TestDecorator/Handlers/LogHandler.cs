@@ -1,8 +1,12 @@
 
 
-namespace AopDecorator.Handlers
+using AopDecorator;
+using AopDecorator.Handlers;
+using System;
+
+namespace TestDecorator.Handlers
 {
-    public class LogHandler : BaseHandler
+    public class LogHandler : AopHandler
     {
         public string Message { get; private set; }
 
@@ -12,6 +16,7 @@ namespace AopDecorator.Handlers
         }
         public override void BeginInvoke(MethodContext context)
         {
+            Console.WriteLine(context.FullName + " " + this.GetType().Name + " BeginInvoke");
             var mthdName = context.FullName;
             var msg = string.Empty;
             if (Message.IsNotNullOrEmptyOrWhiteSpace())
@@ -23,6 +28,7 @@ namespace AopDecorator.Handlers
 
         public override void EndInvoke(MethodContext context)
         {
+            Console.WriteLine(context.FullName + " " + this.GetType().Name + " EndInvoke");
             var mthdName = context.FullName;
             LogHelper.LogInfo(mthdName + " " + "½áÊø");
         }

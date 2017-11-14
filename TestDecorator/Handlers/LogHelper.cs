@@ -1,10 +1,12 @@
-namespace AopDecorator.Handlers
+using System.Diagnostics;
+
+namespace TestDecorator.Handlers
 {
     public static class LogHelper
     {
         public static void LogInfo(string s)
         {
-            throw new System.NotImplementedException();
+            Debug.WriteLine(s);
         }
     }
 }

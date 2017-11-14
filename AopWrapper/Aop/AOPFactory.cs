@@ -22,7 +22,6 @@ namespace AopWrapper.Aop
         private const string ASSEMBLY_NAME = "AopWrapperDynamicAssembly";
         private const string MODULE_NAME = "AopWrapperDynamicModule";
         private const string TYPE_NAME = "Aop_";
-        private const TypeAttributes TYPE_ATTRIBUTES = TypeAttributes.Public | TypeAttributes.Class;
 
         private static readonly Hashtable typeCache = Hashtable.Synchronized(new Hashtable());
         private static readonly AssemblyBuilder assembly;
@@ -36,7 +35,7 @@ namespace AopWrapper.Aop
             module = assembly.DefineDynamicModule(MODULE_NAME, ASSEMBLY_NAME + ".dll");
         }
 
-        [Conditional("XDEBUG")]
+        //[Conditional("XDEBUG")]
         public static void Save()
         {
             assembly.Save(ASSEMBLY_NAME + ".dll");
@@ -48,12 +47,28 @@ namespace AopWrapper.Aop
         /// <typeparam name="T"></typeparam>
         /// <param name="parameters"></param>
         /// <returns>包装后的对象</returns>
-        public static T CreateInstance<T>(params object[] parameters) where T : class
+        public static T CreateInstance<T>(params object[] parameters)
+            where T : class
         {
             Type baseType = typeof(T);
             Type proxyType = BuilderType(baseType);
 
             return (T)FastObjectCreator.CreateObject(proxyType, parameters);
+        }
+        /// <summary>
+        /// 包装T类型的实例
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="parameters"></param>
+        /// <returns>包装后的对象</returns>
+        public static TI CreateInstance<T, TI>(params object[] parameters)
+            where T : class, TI
+            where TI : class
+        {
+            Type baseType = typeof(T);
+            Type proxyType = BuilderType(baseType, typeof(TI));
+
+            return (TI)FastObjectCreator.CreateObject(proxyType, parameters);
         }
 
 
@@ -61,23 +76,61 @@ namespace AopWrapper.Aop
 
         #region BuilderType
 
-        public static Type BuilderType(Type baseType)
+        public static Type BuilderType(Type baseType, Type interfaceType = null)
         {
-            Type proxyType = typeCache[baseType] as Type;
+            if (baseType == null)
+            {
+                throw new ArgumentNullException(nameof(baseType));
+            }
+
+            if (interfaceType == null)
+            {
+                interfaceType = baseType;
+            }
+            else if (!interfaceType.IsAssignableFrom(baseType))
+            {
+                throw new Exception("类型 " + interfaceType.Name + " 不能从类型 " + baseType.Name + " 分配实例。");
+            }
+
+            //if (!interfaceType.IsInterface)
+            //{
+            //    var ctor = interfaceType.GetConstructor(Type.EmptyTypes);
+            //    if (ctor == null)
+            //    {
+            //        throw new Exception("指定的类型 " + interfaceType.Name + " 没有无参的构造函数。");
+            //    }
+            //}
+
+            var key = baseType.AssemblyQualifiedName + "_" + interfaceType.AssemblyQualifiedName;
+            Type proxyType = typeCache[key] as Type;
 
             if (proxyType == null)
             {
                 lock (typeCache.SyncRoot)
                 {
-                    proxyType = BuilderTypeCore(baseType);
-                    typeCache.Add(baseType, proxyType);
+                    proxyType = BuilderTypeCore(baseType, interfaceType);
+                    typeCache.Add(key, proxyType);
                 }
             }
             return proxyType;
         }
-        private static Type BuilderTypeCore(Type baseType)
+        private static Type BuilderTypeCore(Type baseType, Type interfaceType)
         {
-            TypeBuilder typeBuilder = module.DefineType(TYPE_NAME + baseType.Name, TYPE_ATTRIBUTES, baseType);
+            string nameOfType = TYPE_NAME + baseType.Name;
+            if (interfaceType != baseType)
+            {
+                nameOfType += "_" + interfaceType.Name;
+            }
+            TypeBuilder typeBuilder;
+            if (interfaceType.IsInterface)
+            {
+                typeBuilder = module.DefineType(nameOfType, TypeAttributes.Public | TypeAttributes.Sealed);
+                typeBuilder.AddInterfaceImplementation(interfaceType);
+            }
+            else
+            {
+                typeBuilder = module.DefineType(nameOfType, TypeAttributes.Public | TypeAttributes.Sealed, interfaceType);
+            }
             if (baseType.ContainsGenericParameters)
             {
                 var gps = baseType.GetGenericArguments().Select(x => x.Name).ToArray();
@@ -86,9 +139,9 @@ namespace AopWrapper.Aop
                     typeBuilder.DefineGenericParameters(gps);
                 }
             }
-            BuildConstructor(baseType, typeBuilder);
+            var fieldCore = BuildConstructor(typeBuilder, baseType, interfaceType);
 
-            BuildMethod(baseType, typeBuilder);
+            BuildMethod(typeBuilder, baseType, interfaceType, fieldCore);
 
             Type type = typeBuilder.CreateType();
             return type;
@@ -96,25 +149,54 @@ namespace AopWrapper.Aop
         #endregion
 
         #region BuildConstructor
+
         /// <summary>
         /// 
         /// </summary>
         /// <param name="baseType"></param>
+        /// <param name="interfaceType"></param>
         /// <param name="typeBuilder"></param>
-        private static void BuildConstructor(Type baseType, TypeBuilder typeBuilder)
+        private static FieldInfo BuildConstructor(TypeBuilder typeBuilder, Type baseType, Type interfaceType)
         {
-            foreach (var ctor in baseType.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
+            if (interfaceType.IsInterface)
             {
-                var parameterTypes = ctor.GetParameters().Select(u => u.ParameterType).ToArray();
-                var ctorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, parameterTypes);
-
-                ILGenerator il = ctorBuilder.GetILGenerator();
-                for (int i = 0; i <= parameterTypes.Length; ++i)
+                var fieldCore = typeBuilder.DefineField("_core", interfaceType, FieldAttributes.Private);
+                foreach (var ctor in baseType.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
                 {
-                    LoadArgument(il, i);
+                    var parameterTypes = ctor.GetParameters().Select(u => u.ParameterType).ToArray();
+                    var ctorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, parameterTypes);
+
+                    ILGenerator il = ctorBuilder.GetILGenerator();
+                    for (int i = 0; i <= parameterTypes.Length; ++i)
+                    {
+                        LoadArgument(il, i);
+                    }
+
+                    il.Emit(OpCodes.Newobj, ctor);
+                    il.Emit(OpCodes.Stfld, fieldCore);
+                    il.Emit(OpCodes.Ret);
                 }
-                il.Emit(OpCodes.Call, ctor);
-                il.Emit(OpCodes.Ret);
+
+                return fieldCore;
+            }
+            else
+            {
+                foreach (var ctor in baseType.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
+                {
+                    var parameterTypes = ctor.GetParameters().Select(u => u.ParameterType).ToArray();
+                    var ctorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, parameterTypes);
+
+                    ILGenerator il = ctorBuilder.GetILGenerator();
+                    for (int i = 0; i <= parameterTypes.Length; ++i)
+                    {
+                        LoadArgument(il, i);
+                    }
+
+                    il.Emit(OpCodes.Call, ctor);
+                    il.Emit(OpCodes.Ret);
+                }
+
+                return null;
             }
         }
         #endregion
@@ -222,14 +304,36 @@ namespace AopWrapper.Aop
 
         #region BuildMethod
 
+        private static List<MethodInfo> GetMethods(Type type)
+        {
+            if (type.IsInterface)
+            {
+                var mtds = type.GetMethods().ToList();
+
+                var baseIts = type.GetInterfaces();
+                foreach (var it in baseIts)
+                {
+                    mtds.AddRange(GetMethods(it));
+                }
+
+                var list = mtds.DistinctBy(info => new { Sign = info.GetSignName() }).ToList();
+                return list;
+            }
+            else
+            {
+                var mtds = type.GetMethods(BindingFlags.Public | BindingFlags.Instance);
+
+                return mtds.Where(x => !x.IsAbstract && !x.IsSpecialName && x.DeclaringType != typeof(object)).ToList();
+            }
+        }
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="baseType"></param>
+        /// <param name="interfaceType"></param>
         /// <param name="typeBuilder"></param>
-        private static void BuildMethod(Type baseType, TypeBuilder typeBuilder)
+        private static void BuildMethod(TypeBuilder typeBuilder, Type baseType, Type interfaceType, FieldInfo fieldCore)
         {
-            var methods = baseType.GetMethods();
+            var methods = GetMethods(interfaceType);
             foreach (var methodInfo in methods)
             {
                 #region 方法重写条件
@@ -238,33 +342,26 @@ namespace AopWrapper.Aop
                 {
                     continue;
                 }
-                if (methodInfo.IsAbstract || methodInfo.IsStatic || methodInfo.IsSpecialName)
-                {
-                    continue;
-                }
 
-                var declareType = methodInfo.DeclaringType;
-                if (declareType == typeof(object))
+                if (fieldCore == null)
                 {
-                    continue;
-                }
-
-                var mthdAttrs = methodInfo.Attributes;
-                if (mthdAttrs.HasFlag(MethodAttributes.Final))
-                {
-                    continue;
+                    var mthdAttrs = methodInfo.Attributes;
+                    if (mthdAttrs.HasFlag(MethodAttributes.Final))
+                    {
+                        continue;
+                    }
                 }
 
                 bool hasExcpetions;
                 var attrs = GetHandlerJsons(methodInfo, baseType, out hasExcpetions);
-                if (attrs.Count == 0)
+                if (fieldCore == null && attrs.Count == 0)
                 {
                     continue;
                 }
 
                 #endregion
 
-                MethodCreator.Create(typeBuilder, methodInfo, attrs, hasExcpetions);
+                MethodCreator.Create(typeBuilder, baseType, methodInfo, fieldCore, attrs, hasExcpetions);
             }
         }
         #endregion

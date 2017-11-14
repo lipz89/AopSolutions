@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspectX", "AspectX\AspectX.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AopProxy", "AopProxy\AopProxy.csproj", "{1952FE8D-7680-469D-BE5D-BA683AA17DA8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestDecorator", "TestDecorator\TestDecorator.csproj", "{3DEC16EC-C4E8-4759-AF4C-AB64107256E1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{1952FE8D-7680-469D-BE5D-BA683AA17DA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1952FE8D-7680-469D-BE5D-BA683AA17DA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1952FE8D-7680-469D-BE5D-BA683AA17DA8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3DEC16EC-C4E8-4759-AF4C-AB64107256E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3DEC16EC-C4E8-4759-AF4C-AB64107256E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3DEC16EC-C4E8-4759-AF4C-AB64107256E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3DEC16EC-C4E8-4759-AF4C-AB64107256E1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

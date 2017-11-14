@@ -7,7 +7,10 @@ namespace AopDecorator
         /// <summary> 方法执行的调用者 </summary>
         public object Executor { get; internal set; }
         /// <summary> 类名称 </summary>
-        public string ClassName { get; internal set; }
+        public string ClassName
+        {
+            get { return Executor.GetType().Name; }
+        }
         /// <summary> 方法名称 </summary>
         public string MethodName { get; internal set; }
         /// <summary> 返回值 </summary>
@@ -35,7 +38,7 @@ namespace AopDecorator
             get { return this.ClassName + "." + this.MethodName; }
         }
 
-        public void WillThrow(string throwMessage)
+        public void WillThrow(string throwMessage = null)
         {
             this.ThrowMessage = throwMessage;
             this.FlowBehavior = FlowBehavior.ThrowException;

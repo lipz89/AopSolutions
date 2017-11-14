@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -8,13 +9,13 @@ namespace AopWrapper.Aop
 {
     internal class MethodTaskCreator : MethodCreator
     {
-        public MethodTaskCreator(MethodInfo methodInfo, List<string> handlers, bool emitTryCatch)
-            : base(methodInfo, handlers, emitTryCatch)
+        public MethodTaskCreator(Type targetType, MethodInfo methodInfo, FieldInfo fieldCore, List<string> handlers, bool emitTryCatch)
+            : base(targetType, methodInfo, fieldCore, handlers, emitTryCatch)
         {
 
         }
-        public MethodTaskCreator(MethodInfo methodInfo, List<int> handlers, bool emitTryCatch)
-            : base(methodInfo, handlers, emitTryCatch)
+        public MethodTaskCreator(Type targetType, MethodInfo methodInfo, FieldInfo fieldCore, List<int> handlers, bool emitTryCatch)
+            : base(targetType, methodInfo, fieldCore, handlers, emitTryCatch)
         {
 
         }
@@ -31,7 +32,7 @@ namespace AopWrapper.Aop
             }
 
             //将拦截器放到数组中，可以提取键值放缓存，此处做法是序列化后放入数据
-             this.LoadHandlers(il, localContext);
+            this.LoadHandlers(il, localContext);
 
             #region BeginInvoke
 
@@ -83,6 +84,10 @@ namespace AopWrapper.Aop
             DoLog(il, "-----------开始执行基类方法");
 
             il.Emit(OpCodes.Ldarg_0);
+            if (FieldCore != null)
+            {
+                il.Emit(OpCodes.Ldfld, FieldCore);
+            }
             for (int i = 0; i < parameterTypes.Length; ++i)
             {
                 LoadArgument(il, i + 1);

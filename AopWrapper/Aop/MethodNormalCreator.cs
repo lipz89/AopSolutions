@@ -11,13 +11,13 @@ namespace AopWrapper.Aop
 {
     internal class MethodNormalCreator : MethodCreator
     {
-        public MethodNormalCreator(MethodInfo methodInfo, List<string> handlers, bool emitTryCatch)
-            : base(methodInfo, handlers, emitTryCatch)
+        public MethodNormalCreator(Type targetType, MethodInfo methodInfo, FieldInfo fieldCore, List<string> handlers, bool emitTryCatch)
+            : base(targetType,methodInfo,fieldCore, handlers,  emitTryCatch)
         {
 
         }
-        public MethodNormalCreator(MethodInfo methodInfo, List<int> handlers, bool emitTryCatch)
-            : base(methodInfo, handlers, emitTryCatch)
+        public MethodNormalCreator(Type targetType, MethodInfo methodInfo, FieldInfo fieldCore, List<int> handlers, bool emitTryCatch)
+            : base(targetType, methodInfo, fieldCore, handlers, emitTryCatch)
         {
 
         }
@@ -90,6 +90,10 @@ namespace AopWrapper.Aop
             DoLog(il, "-----------开始执行基类方法");
 
             il.Emit(OpCodes.Ldarg_0);
+            if (FieldCore != null)
+            {
+                il.Emit(OpCodes.Ldfld, FieldCore);
+            }
             for (int i = 0; i < parameterTypes.Length; ++i)
             {
                 LoadArgument(il, i + 1);

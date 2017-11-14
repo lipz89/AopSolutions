@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-using AopDecorator;
-
 using AopWrapper.Aop;
 
 namespace Test
@@ -13,7 +11,8 @@ namespace Test
     {
         static void Main(string[] args)
         {
-            var test = AOPFactory.CreateInstance<Test>();
+            var test = AOPFactory.CreateInstance<Test, ITest>();
+            var test2 = AOPFactory.CreateInstance<Test>();
 
             var t = test.GetAll<int>(null);
 
@@ -43,7 +42,7 @@ namespace Test
             Console.WriteLine(o);
 
 
-            var userSvc = AOPFactory.CreateInstance<UserService>(new RepositoryContext(), new Repository<User>());
+            var userSvc = AOPFactory.CreateInstance<UserService, IUserService>(new RepositoryContext(), new Repository<User>());
             var flag = userSvc.Delete(Guid.NewGuid());
             var model = userSvc.GetAll();
             var a = userSvc.Add(new UserModel());
@@ -69,32 +68,6 @@ namespace Test
             {
                 Console.WriteLine("{0} : {1}", type.FullName, Type.GetTypeCode(type));
             }
-        }
-
-        private static async Task Test()
-        {
-            var t1 = new Test2();
-            int iii;
-            //t1.Write(out iii);
-
-            var t = Proxy.Of<Test, ITest>();
-            int st;
-            string stri = "";
-            object obj;
-            //t.Write(out obj);
-            t.Write(ref stri);
-            //t.Write(out st);
-            ////Console.WriteLine(st);
-            //var wrapper = AOPFactory.CreateInstance<UserService>(new RepositoryContext(), new Repository<User>());
-            var wrapper = Proxy.Of<UserService, IUserService>(new RepositoryContext(), new Repository<User>());
-            object a = wrapper.Test();
-            a = wrapper.Test3();
-            //a = wrapper.Add(new UserModel());
-
-            //a = wrapper.Delete(Guid.NewGuid());
-
-            a = await wrapper.GetAll();
-            //Console.WriteLine(r);
         }
     }
 
