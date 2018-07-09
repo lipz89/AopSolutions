@@ -75,17 +75,11 @@ namespace AspectX
                     frame = frames[index];
                     mthd = frame.GetMethod();
                 }
-                var pars = mthd.GetParameters();
                 if (mthd.ReflectedType != null)
                 {
                     ctx.ClassName = mthd.ReflectedType.Name;
                 }
                 ctx.MethodName = mthd.Name;
-                ctx.Parameters = pars.Select(x => new Parameter
-                {
-                    Name = x.Name,
-                    Type = x.ParameterType
-                }).ToArray();
                 var mi = mthd as MethodInfo;
                 if (mi != null)
                 {
@@ -110,13 +104,11 @@ namespace AspectX
                     frame = frames[index];
                     mthd = frame.GetMethod();
                 }
-                var pars = mthd.GetParameters();
                 if (mthd.ReflectedType != null)
                 {
                     ctx.ClassName = mthd.ReflectedType.Name;
                 }
                 ctx.MethodName = mthd.Name;
-                ctx.Parameters = pars.Select(x => new Parameter { Name = x.Name, Type = x.ParameterType }).ToArray();
                 var mi = mthd as MethodInfo;
                 if (mi != null)
                 {

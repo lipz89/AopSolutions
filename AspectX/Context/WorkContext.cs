@@ -25,11 +25,8 @@ namespace AspectX
         /// <summary> 后续动作 </summary>
         public FlowBehavior FlowBehavior { get; protected set; }
 
-        /// <summary> 参数列表 </summary>
-        public Parameter[] Parameters { get; internal set; }
-
         /// <summary> 异常信息 </summary>
-        public Exception Exception { get; internal set; }
+        public Exception Exception { get; protected set; }
 
         /// <summary> 抛出异常时的异常信息 </summary>
         public string ThrowMessage { get; protected set; }
@@ -38,6 +35,11 @@ namespace AspectX
         public string FullName
         {
             get { return this.ClassName + "." + this.MethodName; }
+        }
+
+        public void SetException(Exception exception)
+        {
+            this.Exception = exception;
         }
 
         public void WillThrow()

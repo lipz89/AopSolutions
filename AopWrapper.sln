@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AopProxy", "AopProxy\AopPro
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestDecorator", "TestDecorator\TestDecorator.csproj", "{3DEC16EC-C4E8-4759-AF4C-AB64107256E1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestAop", "TestAop\TestAop.csproj", "{50C950EB-4BD3-48FD-A25E-32A243872B2F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +47,10 @@ Global
 		{3DEC16EC-C4E8-4759-AF4C-AB64107256E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3DEC16EC-C4E8-4759-AF4C-AB64107256E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3DEC16EC-C4E8-4759-AF4C-AB64107256E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{50C950EB-4BD3-48FD-A25E-32A243872B2F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{50C950EB-4BD3-48FD-A25E-32A243872B2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{50C950EB-4BD3-48FD-A25E-32A243872B2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{50C950EB-4BD3-48FD-A25E-32A243872B2F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
