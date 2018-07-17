@@ -23,6 +23,30 @@ namespace TestAop
             return rst;
         }
     }
+
+    public class OtherService : ISimpleService
+    {
+        private int id;
+        public OtherService(int id)
+        {
+            this.id = id;
+        }
+        [LogHandler]
+        [LogWrapperHandler]
+        public virtual void Execute()
+        {
+            Console.WriteLine("执行业务逻辑");
+        }
+
+        [LogHandler]
+        [LogWrapperHandler]
+        public virtual string GetResult()
+        {
+            Console.WriteLine("执行业务逻辑，并返回结果");
+            var rst = "Result";
+            return rst;
+        }
+    }
     public class SubSimpleService : SimpleService
     {
         public override void Execute()

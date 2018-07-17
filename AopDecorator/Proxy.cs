@@ -73,7 +73,7 @@ namespace AopDecorator
 
                 if (proxyType == null)
                 {
-                    proxyType = Override(innerType, baseType);
+                    proxyType = CreateTypeCore(innerType, baseType);
                     typeCache.Add(baseType, proxyType);
                 }
                 return proxyType;
@@ -87,8 +87,7 @@ namespace AopDecorator
         {
             return CreateType(typeof(T));
         }
-
-        private static Type Override(Type innerType, Type baseType)
+        private static Type CreateTypeCore(Type innerType, Type baseType)
         {
             string nameOfType = TYPE_NAME + innerType.Name;
 
@@ -111,44 +110,12 @@ namespace AopDecorator
             return t;
         }
 
-        private static FieldInfo BuildConstructor(Type innerType, Type baseType, TypeBuilder typeBuilder)
-        {
-            // ---- define fields ----
-
-            var fieldCore = typeBuilder.DefineField("_core", baseType, FieldAttributes.Private);
-            foreach (var ctor in innerType.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
-            {
-                var parameterTypes = ctor.GetParameters().Select(u => u.ParameterType).ToArray();
-                var ctorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, parameterTypes);
-
-                ILGenerator il = ctorBuilder.GetILGenerator();
-                //for (int i = 0; i <= parameterTypes.Length; i++)
-                //{
-                //    LoadArgument(il, i);
-                //}
-
-                //il.Emit(OpCodes.Call, ctor);
-
-                for (int i = 0; i <= parameterTypes.Length; i++)
-                {
-                    LoadArgument(il, i);
-                }
-                il.Emit(OpCodes.Newobj, ctor);
-
-                il.Emit(OpCodes.Stfld, fieldCore);
-
-                il.Emit(OpCodes.Ret);
-            }
-            return fieldCore;
-        }
-
         private static void InjectInterceptor(Type innerType, Type baseType, TypeBuilder typeBuilder)
         {
             // ---- define costructors ----
             var fieldCore = BuildConstructor(innerType, baseType, typeBuilder);
 
             // ---- define methods ----
-
             var methodsOfType = GetMethods(baseType);
 
             foreach (var method in methodsOfType)
@@ -178,18 +145,10 @@ namespace AopDecorator
                 //ilOfMethod.Emit(OpCodes.Ldfld, fieldInterceptor);
                 ilOfMethod.Emit(OpCodes.Ldarg_0);
                 ilOfMethod.Emit(OpCodes.Ldfld, fieldCore);
-
-                // create instance of T
+                
                 //ilOfMethod.Emit(OpCodes.Newobj, typeof(T).GetConstructor(new Type[0]));
                 ilOfMethod.Emit(OpCodes.Ldstr, method.Name);
-
-                // build the method parameters
-                //if (methodParameterTypes == null)
-                //{
-                //    ilOfMethod.Emit(OpCodes.Ldnull);
-                //}
-                //else
-                //{
+                
                 var parameters = ilOfMethod.DeclareLocal(typeof(object[]));
                 ilOfMethod.Emit(OpCodes.Ldc_I4, methodParameterTypes.Length);
                 ilOfMethod.Emit(OpCodes.Newarr, typeof(object));
@@ -243,7 +202,6 @@ namespace AopDecorator
 
                 ilOfMethod.Emit(OpCodes.Ldloc, parameters);
                 ilOfMethod.Emit(OpCodes.Ldloc, pts);
-                //}
 
                 LocalBuilder lcReturn = null;
                 if (method.ReturnType != typeof(void))
@@ -288,6 +246,37 @@ namespace AopDecorator
                 // complete
                 ilOfMethod.Emit(OpCodes.Ret);
             }
+        }
+
+        private static FieldInfo BuildConstructor(Type innerType, Type baseType, TypeBuilder typeBuilder)
+        {
+            // ---- define fields ----
+
+            var fieldCore = typeBuilder.DefineField("_core", baseType, FieldAttributes.Private);
+            foreach (var ctor in innerType.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
+            {
+                var parameterTypes = ctor.GetParameters().Select(u => u.ParameterType).ToArray();
+                var ctorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, parameterTypes);
+
+                ILGenerator il = ctorBuilder.GetILGenerator();
+                //for (int i = 0; i <= parameterTypes.Length; i++)
+                //{
+                //    LoadArgument(il, i);
+                //}
+
+                //il.Emit(OpCodes.Call, ctor);
+
+                for (int i = 0; i <= parameterTypes.Length; i++)
+                {
+                    LoadArgument(il, i);
+                }
+                il.Emit(OpCodes.Newobj, ctor);
+
+                il.Emit(OpCodes.Stfld, fieldCore);
+
+                il.Emit(OpCodes.Ret);
+            }
+            return fieldCore;
         }
 
         private static List<MethodInfo> GetMethods(Type type)

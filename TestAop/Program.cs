@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using AopProxy;
 using Autofac;
 using AopDecorator;
@@ -27,7 +23,7 @@ namespace TestAop
             //TestKingAop();
 
             TestAopDecorator();
-            //TestAopWrapper();
+            TestAopWrapper();
 
             Console.ReadKey();
         }
@@ -99,7 +95,7 @@ namespace TestAop
 
         private static void TestAopDecorator()
         {
-            ISimpleService svc = Proxy.Of<SimpleService, ISimpleService>();
+            ISimpleService svc = Proxy.Of<OtherService, ISimpleService>(1);
             svc.Execute();
             var rst = svc.GetResult();
             Console.WriteLine("执行结果为：" + rst);
@@ -108,7 +104,7 @@ namespace TestAop
 
         private static void TestAopWrapper()
         {
-            ISimpleService svc = AOPFactory.CreateInstance<SimpleService, ISimpleService>();
+            ISimpleService svc = AOPFactory.CreateInstance<OtherService, ISimpleService>(1);
             svc.Execute();
             var rst = svc.GetResult();
             Console.WriteLine("执行结果为：" + rst);

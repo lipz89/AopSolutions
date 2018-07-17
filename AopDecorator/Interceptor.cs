@@ -12,17 +12,25 @@ namespace AopDecorator
     {
         public static object Invoke(object @object, string @method, object[] parameters, Type[] types)
         {
-            bool hasExcpetions;
+            //要执行的方法和方法所属实体
             var tgtType = @object.GetType();
             var mthd = tgtType.GetMethod(@method, types);
 
+            #region 查找方法定义的拦截器
+            bool hasExcpetions;
             var attrs = GetHandlers(mthd, tgtType, out hasExcpetions);
+
+            #endregion
+
+            #region 没有拦截器直接执行方法
 
             if (attrs.Count == 0)
             {
                 return mthd.Invoke(@object, parameters);
             }
+            #endregion
 
+            #region 方法执行上下文，包含参数，返回值类型，等
             var pars = new List<Parameter>();
 
             var ps = mthd.GetParameters();
@@ -44,6 +52,9 @@ namespace AopDecorator
                 ReturnType = mthd.ReturnType
             };
 
+            #endregion
+
+            //应用拦截器
             Func<object> dotry = () =>
             {
                 attrs.ForEach(x => x.BeginInvoke(ctx));
@@ -88,11 +99,10 @@ namespace AopDecorator
                 return retObj;
             };
 
-            if (!hasExcpetions)
-            {
-                return dotry();
-            }
+            //没有异常拦截器就直接执行
+            if (!hasExcpetions) { return dotry(); }
 
+            //异常处理部分
             Action<Exception> docatch = (ex) =>
             {
                 ctx.Exception = ex;
@@ -100,7 +110,7 @@ namespace AopDecorator
                 attrs.ForEach(x => x.OnException(ctx));
             };
 
-
+            #region 有异常拦截器就开启一个try/catch
             try
             {
                 return dotry();
@@ -130,10 +140,7 @@ namespace AopDecorator
                         throw;
                 }
             }
-
-            //var dflVal = DefaultValue(mthd.ReturnType);
-
-            //return TryOrNot(dotry, docatch, dflVal);
+            #endregion
         }
 
         private static object TryOrNot(Func<object> dotry, Func<Exception, MethodContext> docatch, object dflValue)
